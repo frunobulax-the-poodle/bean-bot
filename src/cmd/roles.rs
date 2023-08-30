@@ -5,7 +5,7 @@ use crate::{AppError, Context};
 
 use diesel::result::DatabaseErrorKind;
 use poise::serenity_prelude as serenity;
-use serenity::{application::*, builder::*, model::id::RoleId};
+use serenity::{ComponentInteractionDataKind, builder::*, model::id::RoleId};
 
 use model::*;
 
