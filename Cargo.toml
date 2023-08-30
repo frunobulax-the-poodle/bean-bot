@@ -11,6 +11,7 @@ diesel_migrations = "2.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
 poise = { path = "../poise" } #"0.5.2"
+rand = "0.8.5"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 tokio = { version = "1.26.0", features = ["full"] }

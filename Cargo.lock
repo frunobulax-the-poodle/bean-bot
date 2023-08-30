@@ -64,6 +64,7 @@ dependencies = [
  "env_logger",
  "log",
  "poise",
+ "rand",
  "strum",
  "strum_macros",
  "tokio",

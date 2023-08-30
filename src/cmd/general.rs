@@ -1,4 +1,5 @@
 use crate::{AppError, Context};
+use rand::seq::SliceRandom;
 
 /// Show this help menu
 #[poise::command(slash_command, ephemeral = true)]
@@ -48,6 +49,21 @@ pub async fn say(
             .content("Sent.")
             .ephemeral(true),
     )
+    .await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, rename = "ask-matthias")]
+pub async fn ask_matthias(
+    ctx: Context<'_>,
+    #[rest]
+    #[rename = "question"]
+    _msg: String,
+) -> Result<(), AppError> {
+    let options = ["Go ", "Big ", ""];
+    let rand: &str = options.choose(&mut rand::thread_rng()).unwrap();
+    let msg = rand.to_owned() + "slay!";
+    ctx.send(poise::CreateReply::default().content(msg))
     .await?;
     Ok(())
 }

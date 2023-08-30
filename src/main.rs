@@ -88,6 +88,7 @@ async fn app() -> Result<(), AppError> {
             general::help(),
             general::shutdown(),
             general::say(),
+            general::ask_matthias(),
             fav_msgs::mystery(),
             fav_msgs::add(),
             roles::rolemenu(),
