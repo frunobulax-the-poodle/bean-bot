@@ -18,12 +18,14 @@ pub fn find(conn: &mut Conn, new: &NewFavorite) -> Result<Option<FavoritedMessag
 }
 
 pub fn delete_by(conn: &mut Conn, new: &NewFavorite) -> Result<usize, Error> {
-    diesel::delete(fav_msgs
-        .filter(user_id.eq(new.user_id))
-        .filter(guild_id.eq(new.guild_id))
-        .filter(channel_id.eq(new.channel_id))
-        .filter(message_id.eq(new.message_id))
-        ).execute(conn)
+    diesel::delete(
+        fav_msgs
+            .filter(user_id.eq(new.user_id))
+            .filter(guild_id.eq(new.guild_id))
+            .filter(channel_id.eq(new.channel_id))
+            .filter(message_id.eq(new.message_id)),
+    )
+    .execute(conn)
 }
 
 pub fn delete(conn: &mut Conn, del_id: i32) -> Result<usize, Error> {
@@ -40,10 +42,7 @@ pub fn rand(
         query = query.filter(user_id.eq(u))
     }
     // Not the most efficient but will do for now
-    query
-        .order(random())
-        .first(conn)
-        .optional()
+    query.order(random()).first(conn).optional()
 }
 
 pub fn add_fav(conn: &mut Conn, fav: &NewFavorite) -> Result<usize, Error> {

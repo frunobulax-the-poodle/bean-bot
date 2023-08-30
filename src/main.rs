@@ -8,14 +8,13 @@ use diesel::{
 };
 use log::info;
 use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{GatewayIntents, UserId};
-use poise::Event;
+use serenity::{model::prelude::*, FullEvent, GatewayIntents};
 use std::str::FromStr;
 use std::{collections::HashSet, env::var};
 use strum_macros::{Display, EnumString, IntoStaticStr};
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+type AppError = Box<dyn std::error::Error + Send + Sync>;
+type AppContext<'a> = poise::Context<'a, Data, AppError>;
 type ConnType = SqliteConnection;
 type Conn = PooledConnection<ConnectionManager<ConnType>>;
 
@@ -28,7 +27,7 @@ pub enum ComponentAction {
     DeleteFromFavorites,
 }
 
-async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+async fn on_error(error: poise::FrameworkError<'_, Data, AppError>) {
     match error {
         poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot {:?}", error),
         poise::FrameworkError::Command { error, ctx } => {
@@ -43,14 +42,13 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 }
 
 async fn on_event(
-    ctx: &serenity::Context,
-    event: &Event<'_>,
-    _framework: poise::FrameworkContext<'_, Data, Error>,
+    event: &FullEvent,
+    _framework: poise::FrameworkContext<'_, Data, AppError>,
     data: &Data,
-) -> Result<(), Error> {
+) -> Result<(), AppError> {
     match event {
-        Event::InteractionCreate { interaction } => match interaction {
-            serenity::Interaction::MessageComponent(i) => {
+        FullEvent::InteractionCreate { ctx, interaction } => match interaction {
+            Interaction::Component(i) => {
                 let params: Vec<&str> = i.data.custom_id.split('/').collect();
                 if let Some((action, args)) = params.split_first() {
                     match ComponentAction::from_str(&action) {
@@ -69,11 +67,11 @@ async fn on_event(
     }
 }
 
-async fn pre_command(ctx: Context<'_>) {
+async fn pre_command(ctx: AppContext<'_>) {
     info!("Executing command {}...", ctx.command().qualified_name);
 }
 
-fn owners() -> Result<HashSet<UserId>, Error> {
+fn owners() -> Result<HashSet<UserId>, AppError> {
     var("BEAN_BOT_OWNERS").map_or(Ok(HashSet::new()), |arg| {
         arg.split(',')
             .map(|owner| Ok(owner.parse::<u64>()?.into()))
@@ -81,7 +79,7 @@ fn owners() -> Result<HashSet<UserId>, Error> {
     })
 }
 
-async fn app() -> Result<(), Error> {
+async fn app() -> Result<(), AppError> {
     let db = db::connect::<ConnType>();
     db::run_pending_migrations(&mut db.get()?);
 
@@ -93,8 +91,8 @@ async fn app() -> Result<(), Error> {
             fav_msgs::mystery(),
             fav_msgs::add(),
         ],
-        event_handler: |ctx, event, framework, user_data| {
-            Box::pin(on_event(ctx, event, framework, user_data))
+        event_handler: |event, framework, user_data| {
+            Box::pin(on_event(event, framework, user_data))
         },
         on_error: |err| Box::pin(on_error(err)),
         pre_command: |ctx| Box::pin(pre_command(ctx)),
@@ -104,18 +102,17 @@ async fn app() -> Result<(), Error> {
     let token = var("DISCORD_TOKEN").expect("Missing DISCORD_TOKEN");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
-    let framework = poise::Framework::builder()
-        .options(options)
-        .token(token)
-        .intents(intents)
-        .setup(move |ctx, ready, framework| {
-            Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                info!("Registered commands and logged in as {}", ready.user.name);
-                Ok(Data { db })
-            })
-        });
-    framework.run().await?;
+    let framework = poise::Framework::new(options, move |ctx, ready, framework| {
+        Box::pin(async move {
+            poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+            info!("Registered commands and logged in as {}", ready.user.name);
+            Ok(Data { db })
+        })
+    });
+    let mut client = serenity::Client::builder(token, intents)
+        .framework(framework)
+        .await?;
+    client.start().await?;
     Ok(())
 }
 

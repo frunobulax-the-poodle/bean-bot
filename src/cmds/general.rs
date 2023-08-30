@@ -1,13 +1,13 @@
-use crate::{Context, Error};
+use crate::{AppContext, AppError};
 
 /// Show this help menu
 #[poise::command(slash_command, ephemeral = true)]
 pub async fn help(
-    ctx: Context<'_>,
+    ctx: AppContext<'_>,
     #[description = "Specific command to show help about"]
     #[autocomplete = "poise::builtins::autocomplete_command"]
     command: Option<String>,
-) -> Result<(), Error> {
+) -> Result<(), AppError> {
     poise::builtins::help(
         ctx,
         command.as_deref(),
@@ -24,7 +24,7 @@ pub async fn help(
 
 /// Gently euthanise Bean Bot in its sleep
 #[poise::command(slash_command, owners_only, hide_in_help, ephemeral = true)]
-pub async fn shutdown(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn shutdown(ctx: AppContext<'_>) -> Result<(), AppError> {
     ctx.say("Shutting down...").await?;
     ctx.framework()
         .shard_manager()
@@ -37,12 +37,17 @@ pub async fn shutdown(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command, owners_only, hide_in_help)]
 pub async fn say(
-    ctx: Context<'_>,
+    ctx: AppContext<'_>,
     #[rest]
     #[description = "Text to say"]
     msg: String,
-) -> Result<(), Error> {
+) -> Result<(), AppError> {
     ctx.channel_id().say(&ctx, msg).await?;
-    ctx.send(|f| f.content("Sent.").ephemeral(true)).await?;
+    ctx.send(
+        poise::CreateReply::default()
+            .content("Sent.")
+            .ephemeral(true),
+    )
+    .await?;
     Ok(())
 }
