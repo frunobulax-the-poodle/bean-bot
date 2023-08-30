@@ -7,7 +7,7 @@ use diesel::{
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 use log::info;
-use poise::serenity_prelude as serenity;
+use poise::{serenity_prelude as serenity, Prefix};
 use serenity::{model::prelude::*, FullEvent, GatewayIntents};
 use std::str::FromStr;
 use std::{collections::HashSet, env::var};
@@ -89,6 +89,7 @@ async fn app() -> Result<(), AppError> {
             general::shutdown(),
             general::say(),
             general::ask_matthias(),
+            general::eight_ball(),
             fav_msgs::mystery(),
             fav_msgs::add(),
             roles::rolemenu(),
@@ -100,6 +101,11 @@ async fn app() -> Result<(), AppError> {
         on_error: |err| Box::pin(on_error(err)),
         pre_command: |ctx| Box::pin(pre_command(ctx)),
         owners: owners()?,
+        prefix_options: poise::PrefixFrameworkOptions {
+            prefix: Some("🫘".to_owned()),
+            additional_prefixes: vec![Prefix::Literal("$"), Prefix::Literal("beans")],
+            ..Default::default()
+        },
         ..Default::default()
     };
     let token = var("DISCORD_TOKEN").expect("Missing DISCORD_TOKEN");

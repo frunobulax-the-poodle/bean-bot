@@ -53,17 +53,58 @@ pub async fn say(
     Ok(())
 }
 
-#[poise::command(slash_command, rename = "ask-matthias")]
+#[poise::command(prefix_command, slash_command, rename = "ask-matthias")]
 pub async fn ask_matthias(
     ctx: Context<'_>,
     #[rest]
     #[rename = "question"]
     _msg: String,
 ) -> Result<(), AppError> {
+    let msg = build_matthias();
+    ctx.send(poise::CreateReply::default().content(msg)).await?;
+    Ok(())
+}
+
+fn build_matthias() -> String {
+    let prefix = "<:phoenix:900483319039402014> | ";
     let options = ["Go ", "Big ", ""];
     let rand: &str = options.choose(&mut rand::thread_rng()).unwrap();
-    let msg = rand.to_owned() + "slay!";
-    ctx.send(poise::CreateReply::default().content(msg))
-    .await?;
+    prefix.to_owned() + rand + "slay!"
+}
+
+#[poise::command(prefix_command, slash_command, rename = "8ball")]
+pub async fn eight_ball(
+    ctx: Context<'_>,
+    #[rest]
+    #[rename = "question"]
+    _msg: String,
+) -> Result<(), AppError> {
+    let rngesus: f64 = rand::random();
+    let msg = if rngesus <= 0.01 {
+        build_matthias()
+    } else {
+        let prefix = "🎱 | ";
+        let options = [
+            "Yes, definitely.",
+            "It is certain.",
+            "It is decidedly so.",
+            "Without a doubt",
+            "Most likely.",
+            "You may rely on it.",
+            "Signs point to yes",
+            "As I see it, yes.",
+            "Most likely.",
+            "Outlook good.",
+            "Yes.",
+            "My reply is no.",
+            "Outlook not so good.",
+            "Very doubtful.",
+            "My sources say no.",
+            "Don't count on it.",
+        ];
+        let rand: &str = options.choose(&mut rand::thread_rng()).unwrap();
+        prefix.to_owned() + rand
+    };
+    ctx.send(poise::CreateReply::default().content(msg)).await?;
     Ok(())
 }
