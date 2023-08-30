@@ -3,7 +3,7 @@ use cmds::*;
 mod db;
 
 use diesel::{
-    prelude::SqliteConnection,
+    prelude::PgConnection,
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 use log::info;
@@ -15,7 +15,7 @@ use strum_macros::{Display, EnumString, IntoStaticStr};
 
 type AppError = Box<dyn std::error::Error + Send + Sync>;
 type AppContext<'a> = poise::Context<'a, Data, AppError>;
-type ConnType = SqliteConnection;
+type ConnType = PgConnection;
 type Conn = PooledConnection<ConnectionManager<ConnType>>;
 
 pub struct Data {

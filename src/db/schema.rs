@@ -2,10 +2,10 @@
 
 diesel::table! {
     fav_msgs (id) {
-        id -> Integer,
-        user_id -> BigInt,
-        guild_id -> BigInt,
-        channel_id -> BigInt,
-        message_id -> BigInt,
+        id -> Int4,
+        user_id -> Int8,
+        guild_id -> Int8,
+        channel_id -> Int8,
+        message_id -> Int8,
     }
 }
