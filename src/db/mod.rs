@@ -2,11 +2,7 @@ pub mod schema;
 
 use diesel::{
     backend::Backend,
-    deserialize,
-    pg::Pg,
     r2d2::{ConnectionManager, Pool, R2D2Connection},
-    sql_types::{is_nullable::NotNull, Array, Nullable, SqlType},
-    Queryable,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
@@ -24,26 +20,4 @@ pub fn connect<C: R2D2Connection + 'static>() -> Pool<ConnectionManager<C>> {
 
 pub fn run_pending_migrations<DB: Backend, M: MigrationHarness<DB>>(conn: &mut M) {
     conn.run_pending_migrations(MIGRATIONS).unwrap();
-}
-
-#[derive(Debug)]
-pub struct VecNoNulls<T>(Vec<T>);
-
-impl<I, O> Queryable<Array<Nullable<I>>, Pg> for VecNoNulls<O>
-where
-    I: SqlType<IsNull = NotNull>,
-    O: deserialize::FromSql<I, Pg>,
-{
-    type Row = Vec<Option<O>>;
-
-    fn build(vec: Self::Row) -> deserialize::Result<Self> {
-        let v = vec.into_iter().flatten().collect();
-        Ok(VecNoNulls(v))
-    }
-}
-
-impl<T> From<VecNoNulls<T>> for Vec<T> {
-    fn from(vec: VecNoNulls<T>) -> Self {
-        vec.0
-    }
 }

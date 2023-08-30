@@ -1,4 +1,3 @@
-mod db;
 mod model;
 use std::{collections::HashSet, str::FromStr};
 
@@ -34,7 +33,7 @@ pub async fn new(
     let mut conn = ctx.data().db.get()?;
     let guild_id = ctx.guild_id().unwrap().get() as i64;
 
-    if db::find(&mut conn, guild_id, &name)?.is_some() {
+    if RoleMenu::find(&mut conn, guild_id, &name)?.is_some() {
         ctx.say(format!("The role menu '{}' already exists", &name))
             .await?;
         return Ok(());
@@ -54,11 +53,14 @@ pub async fn new(
                 guild_id,
                 name,
                 max_selectable,
-                roles: values.into_iter().map(|r| r.get() as i64).collect(),
             };
             log::info!("Creating new role menu {:?}", new);
             // Conflict could happen, whatever
-            db::new(&mut conn, &new)?;
+            let mut roles: Vec<_> = values
+                .into_iter()
+                .map(|r| NewRoleOption::blank(r))
+                .collect();
+            new.insert(&mut conn, &mut roles)?;
             interaction.defer(ctx).await?;
             handle
                 .edit(
@@ -86,7 +88,7 @@ pub async fn del(
     name: String,
 ) -> Result<(), AppError> {
     let mut conn = ctx.data().db.get()?;
-    let deleted = db::delete(&mut conn, ctx.guild_id().unwrap().get() as i64, &name)?;
+    let deleted = RoleMenu::delete(&mut conn, ctx.guild_id().unwrap().get() as i64, &name)?;
     let msg = if deleted > 0 {
         format!("Deleted role menu '{}'", &name)
     } else {
@@ -107,7 +109,7 @@ pub async fn rename(
     let mut conn = ctx.data().db.get()?;
     let guild_id = ctx.guild_id().unwrap().get() as i64;
 
-    let msg = match db::rename(&mut conn, guild_id, &from, &to) {
+    let msg = match RoleMenu::rename(&mut conn, guild_id, &from, &to) {
         Ok(0) => Ok(format!("Could not find role menu '{}'", &from)),
         Ok(_) => Ok(format!("Renamed '{}' to '{}'", &from, &to)),
         Err(diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
@@ -133,10 +135,10 @@ pub async fn roles(
 ) -> Result<(), AppError> {
     let guild_id = ctx.guild_id().unwrap().get() as i64;
     let mut conn = ctx.data().db.get()?;
-    if let Some(menu) = db::find(&mut conn, guild_id, &name)? {
+    if let Some((menu, roles)) = RoleMenu::find(&mut conn, guild_id, &name)? {
         let mut member = ctx.author_member().await.unwrap().into_owned();
         let user_roles: HashSet<&RoleId> = HashSet::from_iter(member.roles.iter());
-        let handle = send_rolemenu(&ctx, &menu, &user_roles).await?;
+        let handle = send_rolemenu(&ctx, &menu, &roles, &user_roles).await?;
         let id = ctx.id();
 
         let res = serenity::ComponentInteractionCollector::new(&ctx)
@@ -150,10 +152,9 @@ pub async fn roles(
 
                 let value_set: HashSet<RoleId> =
                     HashSet::from_iter(values.iter().map(|str| RoleId::from_str(str).unwrap()));
-                let (mut add, mut del): (Vec<_>, Vec<_>) = menu
-                    .roles
+                let (mut add, mut del): (Vec<_>, Vec<_>) = roles
                     .iter()
-                    .map(|id| RoleId::new(*id as u64))
+                    .map(|role| RoleId::new(role.role_id as u64))
                     .partition(|id| value_set.contains(id));
 
                 // Yes, this is necessary 🤦
@@ -187,21 +188,21 @@ pub async fn roles(
 async fn send_rolemenu<'a>(
     ctx: &Context<'a>,
     menu: &RoleMenu,
+    roles: &[RoleOption],
     user_roles: &HashSet<&RoleId>,
 ) -> Result<poise::ReplyHandle<'a>, AppError> {
     let guild = ctx.partial_guild().await.unwrap();
 
-    let options: Vec<_> = menu
-        .roles
+    let options: Vec<_> = roles
         .iter()
-        .map(|id| guild.roles.get(&RoleId::new(*id as u64)))
+        .map(|role| guild.roles.get(&RoleId::new(role.id as u64)))
         .flatten()
         .map(|role| {
             CreateSelectMenuOption::new(&role.name, role.id.get().to_string())
                 .default_selection(user_roles.contains(&role.id))
         })
         .collect();
-    let max_values = std::cmp::min(menu.roles.len(), menu.max_selectable.unwrap_or(25) as usize);
+    let max_values = std::cmp::min(roles.len(), menu.max_selectable.unwrap_or(25) as usize);
     let select = CreateSelectMenu::new(
         ctx.id().to_string(),
         CreateSelectMenuKind::String { options },
@@ -220,7 +221,7 @@ async fn comp_rolemenu(ctx: Context<'_>, partial: &str) -> Vec<String> {
         .db
         .get()
         .ok()
-        .and_then(|mut conn| db::comp_rolemenu(&mut conn, guild_id, partial).ok())
+        .and_then(|mut conn| RoleMenu::comp_rolemenu(&mut conn, guild_id, partial).ok())
         .unwrap_or(Vec::new())
 }
 
