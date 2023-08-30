@@ -1,4 +1,3 @@
-mod db;
 mod model;
 
 use crate::{AppError, ComponentAction, Context, Data};
@@ -24,12 +23,12 @@ pub async fn add(ctx: Context<'_>, msg: Message) -> Result<(), AppError> {
 
     let mut conn = ctx.data().db.get()?;
 
-    if db::find(&mut conn, &new)?.is_some() {
+    if new.find(&mut conn)?.is_some() {
         ctx.say("You already favorited this message.").await?;
         return Ok(());
     }
 
-    match db::add_fav(&mut conn, &new) {
+    match new.insert(&mut conn) {
         Ok(_) => Ok(ctx.say("Saved.")),
         Err(diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
             Ok(ctx.say("You already favorited this message."))
@@ -48,7 +47,7 @@ pub async fn mystery(
 ) -> Result<(), AppError> {
     let mut conn = ctx.data().db.get()?;
     loop {
-        let fav = db::rand(
+        let fav = FavoritedMessage::rand(
             &mut conn,
             Some(ctx.author().id.into()).filter(|_| !global.unwrap_or(false)),
             ctx.guild_id().unwrap().into(),
@@ -85,7 +84,7 @@ pub async fn mystery(
                 break;
             } else {
                 info!("Favorited message has been deleted, deleting...");
-                db::delete(&mut conn, rand.id)?;
+                FavoritedMessage::delete_id(&mut conn, rand.id)?;
             }
         } else {
             ctx.send(
@@ -139,7 +138,7 @@ pub async fn delete(
         message_id: message_id as i64,
     };
 
-    let res = if db::delete_by(&mut data.db.get()?, &search)? > 0 {
+    let res = if search.delete(&mut data.db.get()?)? > 0 {
         "Successfully removed from favorites."
     } else {
         "This message is not in your favorites."

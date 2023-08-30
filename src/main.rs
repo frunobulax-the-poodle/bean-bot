@@ -1,5 +1,5 @@
-mod cmds;
-use cmds::*;
+mod cmd;
+use cmd::*;
 mod db;
 
 use diesel::{
