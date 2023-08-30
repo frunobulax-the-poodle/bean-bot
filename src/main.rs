@@ -13,8 +13,8 @@ use std::str::FromStr;
 use std::{collections::HashSet, env::var};
 use strum_macros::{Display, EnumString, IntoStaticStr};
 
+type Context<'a> = poise::Context<'a, Data, AppError>;
 type AppError = Box<dyn std::error::Error + Send + Sync>;
-type AppContext<'a> = poise::Context<'a, Data, AppError>;
 type ConnType = PgConnection;
 type Conn = PooledConnection<ConnectionManager<ConnType>>;
 
@@ -67,7 +67,7 @@ async fn on_event(
     }
 }
 
-async fn pre_command(ctx: AppContext<'_>) {
+async fn pre_command(ctx: Context<'_>) {
     info!("Executing command {}...", ctx.command().qualified_name);
 }
 
@@ -90,6 +90,8 @@ async fn app() -> Result<(), AppError> {
             general::say(),
             fav_msgs::mystery(),
             fav_msgs::add(),
+            roles::rolemenu(),
+            roles::roles(),
         ],
         event_handler: |event, framework, user_data| {
             Box::pin(on_event(event, framework, user_data))

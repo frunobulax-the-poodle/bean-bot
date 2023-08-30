@@ -1,9 +1,9 @@
-use crate::{AppContext, AppError};
+use crate::{AppError, Context};
 
 /// Show this help menu
 #[poise::command(slash_command, ephemeral = true)]
 pub async fn help(
-    ctx: AppContext<'_>,
+    ctx: Context<'_>,
     #[description = "Specific command to show help about"]
     #[autocomplete = "poise::builtins::autocomplete_command"]
     command: Option<String>,
@@ -24,7 +24,7 @@ pub async fn help(
 
 /// Gently euthanise Bean Bot in its sleep
 #[poise::command(slash_command, owners_only, hide_in_help, ephemeral = true)]
-pub async fn shutdown(ctx: AppContext<'_>) -> Result<(), AppError> {
+pub async fn shutdown(ctx: Context<'_>) -> Result<(), AppError> {
     ctx.say("Shutting down...").await?;
     ctx.framework()
         .shard_manager()
@@ -37,7 +37,7 @@ pub async fn shutdown(ctx: AppContext<'_>) -> Result<(), AppError> {
 
 #[poise::command(slash_command, owners_only, hide_in_help)]
 pub async fn say(
-    ctx: AppContext<'_>,
+    ctx: Context<'_>,
     #[rest]
     #[description = "Text to say"]
     msg: String,

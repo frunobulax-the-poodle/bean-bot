@@ -9,3 +9,15 @@ diesel::table! {
         message_id -> Int8,
     }
 }
+
+diesel::table! {
+    rolemenu (id) {
+        id -> Int4,
+        guild_id -> Int8,
+        name -> Text,
+        max_selectable -> Nullable<Int4>,
+        roles -> Array<Nullable<Int8>>,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(fav_msgs, rolemenu,);

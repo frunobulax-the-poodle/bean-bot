@@ -1,12 +1,12 @@
 mod db;
 mod model;
 
-use crate::{ComponentAction, AppContext, Data, AppError};
+use crate::{AppError, ComponentAction, Context, Data};
 use diesel::result::DatabaseErrorKind;
 use log::{error, info};
 use model::*;
 use poise::serenity_prelude as serenity;
-use serenity::{CacheHttp, builder::*, model::prelude::*};
+use serenity::{builder::*, model::prelude::*, CacheHttp};
 
 /// Add a message to your favorites
 #[poise::command(
@@ -14,7 +14,7 @@ use serenity::{CacheHttp, builder::*, model::prelude::*};
     guild_only = true,
     ephemeral = true
 )]
-pub async fn add(ctx: AppContext<'_>, msg: Message) -> Result<(), AppError> {
+pub async fn add(ctx: Context<'_>, msg: Message) -> Result<(), AppError> {
     let new = NewFavorite {
         user_id: ctx.author().id.into(),
         guild_id: ctx.guild_id().unwrap().into(),
@@ -43,7 +43,7 @@ pub async fn add(ctx: AppContext<'_>, msg: Message) -> Result<(), AppError> {
 /// Post a random message from your or the server's favorites
 #[poise::command(slash_command, guild_only = true)]
 pub async fn mystery(
-    ctx: AppContext<'_>,
+    ctx: Context<'_>,
     #[description = "Draw from server's global favorites if set"] global: Option<bool>,
 ) -> Result<(), AppError> {
     let mut conn = ctx.data().db.get()?;
@@ -61,12 +61,10 @@ pub async fn mystery(
                     .nick_in(&ctx, rand.guild_id as u64)
                     .await
                     .unwrap_or(msg.author.name.to_owned());
-                let mut embed = CreateEmbed::default()
-                    .description(&msg.content)
-                    .author(
-                        CreateEmbedAuthor::new(author_nick)
-                            .icon_url(msg.author.avatar_url().unwrap_or("".to_string())),
-                    );
+                let mut embed = CreateEmbed::default().description(&msg.content).author(
+                    CreateEmbedAuthor::new(author_nick)
+                        .icon_url(msg.author.avatar_url().unwrap_or("".to_string())),
+                );
                 if let Some(attach) = msg.attachments.iter().find(|a| a.height.is_some()) {
                     embed = embed.image(&attach.url);
                 }
@@ -102,7 +100,7 @@ pub async fn mystery(
     Ok(())
 }
 
-async fn fetch_msg(ctx: &AppContext<'_>, fav: &FavoritedMessage) -> Result<Option<Message>, AppError> {
+async fn fetch_msg(ctx: &Context<'_>, fav: &FavoritedMessage) -> Result<Option<Message>, AppError> {
     match ctx
         .http()
         .get_message(
